@@ -180,7 +180,72 @@
         padding-top: 12px;
         border-top: 1px solid #e2e8f0;
       }
+      #selectedAirportText {
+        margin: 8px 0 10px;
+        font-size: 17px;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.25;
+      }
 
+      .sort-controls {
+        display: grid;
+        gap: 6px;
+        margin: 10px 0 12px;
+      }
+
+      .sort-controls label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #475569;
+      }
+
+      .sort-controls select {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 8px 10px;
+        background: white;
+        color: #0f172a;
+        font: inherit;
+        font-size: 13px;
+      }
+
+      .aircraft-filter {
+        display: grid;
+        gap: 8px;
+        margin: 10px 0 12px;
+        padding: 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+      }
+
+      .aircraft-filter-title {
+        font-size: 12px;
+        font-weight: 800;
+        color: #475569;
+      }
+
+      .aircraft-filter-options {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px 10px;
+      }
+
+      .aircraft-filter label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #0f172a;
+        cursor: pointer;
+      }
+
+      .aircraft-filter input {
+        accent-color: #ff6900;
+      }
       #destinationsList {
         margin: 8px 0 0;
         padding-left: 18px;
@@ -189,7 +254,19 @@
       }
 
       #destinationsList li {
-        margin: 3px 0;
+        margin: 8px 0;
+      }
+
+      .destination-main {
+        font-weight: 700;
+        color: #0f172a;
+      }
+
+      .destination-meta {
+        margin-top: 2px;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.35;
       }
 
       .airport-marker {
@@ -236,12 +313,41 @@
         opacity: 0.22;
       }
 
+      .airport-marker.no-fr24-data {
+        background: #94a3b8;
+      }
+
+      .airport-marker.base.no-fr24-data {
+        outline-color: #94a3b8;
+        background: #94a3b8;
+      }
+
+      .legend-panel {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        z-index: 1000;
+        width: min(300px, calc(100vw - 32px));
+        background: rgba(255, 255, 255, 0.94);
+        border-radius: 14px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+        padding: 12px;
+        backdrop-filter: blur(10px);
+        color: #334155;
+        font-size: 12px;
+      }
+
+      .legend-panel summary {
+        cursor: pointer;
+        font-weight: 800;
+        color: #0f172a;
+        list-style-position: inside;
+      }
+
       .legend {
         display: grid;
         gap: 6px;
         margin-top: 10px;
-        font-size: 12px;
-        color: #334155;
       }
 
       .legend-row {
@@ -277,6 +383,27 @@
         outline-offset: 1px;
       }
 
+      .legend-dot.no-fr24-data {
+        background: #94a3b8;
+      }
+
+      .legend-line {
+        display: inline-block;
+        width: 18px;
+        height: 3px;
+        border-radius: 999px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        flex: 0 0 auto;
+      }
+
+      .legend-line.active-route {
+        background: #ff6900;
+      }
+
+      .legend-line.inactive-route {
+        background: #94a3b8;
+      }
+
       .leaflet-popup-content {
         margin: 10px 12px;
         font-size: 13px;
@@ -294,11 +421,83 @@
     <aside class="info-panel">
       <h1>easyJet Routes Map</h1>
       <p id="status">Chargement des données...</p>
-      <p>
-        Par défaut, aucune route n’est affichée. Clique sur un aéroport orange
-        pour afficher toutes ses destinations easyJet depuis cet aéroport.
-      </p>
 
+      <div class="stats">
+        <div class="stat">
+          <span>Routes</span><strong id="routeCount">0</strong>
+        </div>
+        <div class="stat">
+          <span>Aéroports</span><strong id="airportCount">0</strong>
+        </div>
+        <div class="stat">
+          <span>Origines</span><strong id="originCount">0</strong>
+        </div>
+      </div>
+
+      <div id="selectedAirport">
+        <p id="selectedAirportText">Aucun aéroport sélectionné</p>
+
+        <div class="aircraft-filter">
+          <div class="aircraft-filter-title">Filtrer par avion</div>
+          <div class="aircraft-filter-options">
+            <label
+              ><input
+                type="checkbox"
+                class="aircraft-filter-checkbox"
+                value="A319"
+              />A319</label
+            >
+            <label
+              ><input
+                type="checkbox"
+                class="aircraft-filter-checkbox"
+                value="A320"
+              />A320</label
+            >
+            <label
+              ><input
+                type="checkbox"
+                class="aircraft-filter-checkbox"
+                value="A320N"
+              />A320N</label
+            >
+            <label
+              ><input
+                type="checkbox"
+                class="aircraft-filter-checkbox"
+                value="A321N"
+              />A321N</label
+            >
+          </div>
+        </div>
+
+        <div class="sort-controls">
+          <label for="destinationSortSelect">Trier les destinations</label>
+          <select id="destinationSortSelect">
+            <option value="alpha">Ordre alphabétique</option>
+            <option value="frequency_desc">Fréquence hebdo décroissante</option>
+            <option value="aircraft">Types avion</option>
+            <option value="distance_asc">Distance croissante</option>
+            <option value="distance_desc">Distance décroissante</option>
+            <option value="flight_time_asc">
+              Temps de vol estimé croissant
+            </option>
+            <option value="flight_time_desc">
+              Temps de vol estimé décroissant
+            </option>
+            <option value="block_time_asc">Temps bloc estimé croissant</option>
+            <option value="block_time_desc">
+              Temps bloc estimé décroissant
+            </option>
+          </select>
+        </div>
+
+        <ol id="destinationsList"></ol>
+      </div>
+    </aside>
+
+    <details class="legend-panel" open>
+      <summary>Légende</summary>
       <div class="legend">
         <div class="legend-row">
           <span class="legend-dot origin"></span>Origine cliquable dans les
@@ -315,26 +514,20 @@
           <span class="legend-dot destination"></span>Destination affichée pour
           l’aéroport sélectionné
         </div>
-      </div>
-
-      <div class="stats">
-        <div class="stat">
-          <span>Routes</span><strong id="routeCount">0</strong>
+        <div class="legend-row">
+          <span class="legend-line active-route"></span>Route trouvée par FR24
+          sur les 7 prochains jours
         </div>
-        <div class="stat">
-          <span>Aéroports</span><strong id="airportCount">0</strong>
+        <div class="legend-row">
+          <span class="legend-line inactive-route"></span>Route easyJet sans vol
+          FR24 trouvé sur les 7 prochains jours
         </div>
-        <div class="stat">
-          <span>Origines</span><strong id="originCount">0</strong>
+        <div class="legend-row">
+          <span class="legend-dot no-fr24-data"></span>Aucune fréquence FR24
+          trouvée sur les 7 prochains jours
         </div>
       </div>
-
-      <div id="selectedAirport">
-        <p><strong>Aéroport sélectionné</strong></p>
-        <p id="selectedAirportText">Aucun</p>
-        <ol id="destinationsList"></ol>
-      </div>
-    </aside>
+    </details>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -412,15 +605,25 @@
         "#selectedAirportText",
       );
       const destinationsList = document.querySelector("#destinationsList");
+      const destinationSortSelect = document.querySelector(
+        "#destinationSortSelect",
+      );
+      const aircraftFilterCheckboxes = Array.from(
+        document.querySelectorAll(".aircraft-filter-checkbox"),
+      );
 
       let routes = [];
       let airportsByIata = new Map();
       let routesByOrigin = new Map();
       let markerByIata = new Map();
+      let airportHasFr24Data = new Map();
       let activeRouteLayer = L.layerGroup().addTo(map);
       let activeDestinationLayer = L.layerGroup().addTo(map);
       let selectedOriginIata = null;
       let previewOriginIata = null;
+      let currentPanelOriginAirport = null;
+      let currentPanelOriginRoutes = [];
+      let selectedAircraftTypes = new Set();
 
       init();
 
@@ -429,6 +632,22 @@
           clearSelectedOrigin();
         }
       });
+
+      destinationSortSelect.addEventListener("change", () => {
+        if (currentPanelOriginAirport) {
+          updateSelectedAirportPanel(
+            currentPanelOriginAirport,
+            currentPanelOriginRoutes,
+          );
+        }
+      });
+
+      for (const checkbox of aircraftFilterCheckboxes) {
+        checkbox.addEventListener("change", () => {
+          selectedAircraftTypes = getSelectedAircraftTypes();
+          refreshMapForCurrentFilters();
+        });
+      }
 
       async function init() {
         try {
@@ -445,16 +664,13 @@
           );
 
           routesByOrigin = groupRoutesByOrigin(routes);
+          airportHasFr24Data = buildAirportFr24DataMap(routes);
           renderAirportMarkers();
           updateStats();
-          setStatus("Prêt. Clique sur un aéroport.");
+          setStatus("");
         } catch (error) {
           console.error(error);
-          setStatus(
-            "Erreur de chargement. Lance la page avec un petit serveur local, par exemple : python3 -m http.server, puis ouvre http://localhost:8000/\n\n" +
-              error.message,
-            true,
-          );
+          setStatus("Erreur de chargement. " + error.message, true);
         }
       }
 
@@ -566,6 +782,109 @@
         return grouped;
       }
 
+      function buildAirportFr24DataMap(routeList) {
+        const airportMap = new Map();
+
+        for (const route of routeList) {
+          if (!airportMap.has(route.origin.iata)) {
+            airportMap.set(route.origin.iata, false);
+          }
+          if (!airportMap.has(route.destination.iata)) {
+            airportMap.set(route.destination.iata, false);
+          }
+
+          if (route.has_fr24_data) {
+            airportMap.set(route.origin.iata, true);
+            airportMap.set(route.destination.iata, true);
+          }
+        }
+
+        return airportMap;
+      }
+
+      function getSelectedAircraftTypes() {
+        return new Set(
+          aircraftFilterCheckboxes
+            .filter((checkbox) => checkbox.checked)
+            .map((checkbox) => checkbox.value),
+        );
+      }
+
+      function hasActiveAircraftFilter() {
+        return selectedAircraftTypes.size > 0;
+      }
+
+      function routeMatchesAircraftFilter(route) {
+        if (!hasActiveAircraftFilter()) return true;
+        if (!Array.isArray(route.aircraft_types)) return false;
+        return route.aircraft_types.some((aircraftType) =>
+          selectedAircraftTypes.has(aircraftType),
+        );
+      }
+
+      function filterRoutesByAircraft(routeList) {
+        return routeList.filter(routeMatchesAircraftFilter);
+      }
+
+      function refreshMapForCurrentFilters() {
+        activeRouteLayer.clearLayers();
+        activeDestinationLayer.clearLayers();
+        resetMarkerStyles();
+
+        if (selectedOriginIata) {
+          renderOriginRoutes(selectedOriginIata, { fitMap: false });
+          return;
+        }
+
+        if (hasActiveAircraftFilter()) {
+          renderFilteredAircraftRoutes();
+          selectedAirportText.textContent = `Filtre avion — ${selectedAircraftTypesLabel()}`;
+          destinationsList.innerHTML = "";
+          return;
+        }
+
+        currentPanelOriginAirport = null;
+        currentPanelOriginRoutes = [];
+        selectedAirportText.textContent = "Aucun aéroport sélectionné";
+        destinationsList.innerHTML = "";
+      }
+
+      function selectedAircraftTypesLabel() {
+        return Array.from(selectedAircraftTypes).sort().join(", ");
+      }
+
+      function renderFilteredAircraftRoutes() {
+        const matchingRoutes = routes.filter(routeMatchesAircraftFilter);
+        const servedIatas = new Set();
+
+        for (const route of matchingRoutes) {
+          const originAirport = airportsByIata.get(route.origin.iata);
+          const destinationAirport = airportsByIata.get(route.destination.iata);
+          if (!originAirport || !destinationAirport) continue;
+
+          servedIatas.add(route.origin.iata);
+          servedIatas.add(route.destination.iata);
+
+          L.polyline(
+            [
+              [originAirport.latitude, originAirport.longitude],
+              [destinationAirport.latitude, destinationAirport.longitude],
+            ],
+            routeLineStyle(route, { filtered: true }),
+          )
+            .bindTooltip(routeTooltipText(route))
+            .addTo(activeRouteLayer);
+        }
+
+        for (const [iata, marker] of markerByIata.entries()) {
+          if (!servedIatas.has(iata)) {
+            marker.setIcon(
+              createAirportIcon(markerClassForAirport(iata, "dimmed")),
+            );
+          }
+        }
+      }
+
       function renderAirportMarkers() {
         const originIatas = Array.from(routesByOrigin.keys());
 
@@ -626,7 +945,8 @@
         resetMarkerStyles();
 
         const originAirport = airportsByIata.get(originIata);
-        const originRoutes = routesByOrigin.get(originIata) || [];
+        const allOriginRoutes = routesByOrigin.get(originIata) || [];
+        const originRoutes = filterRoutesByAircraft(allOriginRoutes);
         const originMarker = markerByIata.get(originIata);
         if (!originAirport) return;
 
@@ -656,13 +976,9 @@
               [originAirport.latitude, originAirport.longitude],
               [destinationAirport.latitude, destinationAirport.longitude],
             ],
-            {
-              color: "#ff6900",
-              weight: 2,
-              opacity: 0.68,
-            },
+            routeLineStyle(route),
           )
-            .bindTooltip(`${route.origin.iata} → ${route.destination.iata}`)
+            .bindTooltip(routeTooltipText(route))
             .addTo(activeRouteLayer);
 
           if (markerByIata.has(route.destination.iata)) {
@@ -701,7 +1017,15 @@
         activeRouteLayer.clearLayers();
         activeDestinationLayer.clearLayers();
         resetMarkerStyles();
-        selectedAirportText.textContent = "Aucun";
+        if (hasActiveAircraftFilter()) {
+          renderFilteredAircraftRoutes();
+          selectedAirportText.textContent = `Filtre avion — ${selectedAircraftTypesLabel()}`;
+          destinationsList.innerHTML = "";
+          return;
+        }
+        currentPanelOriginAirport = null;
+        currentPanelOriginRoutes = [];
+        selectedAirportText.textContent = "Aucun aéroport sélectionné";
         destinationsList.innerHTML = "";
       }
 
@@ -723,6 +1047,8 @@
       function markerClassForAirport(iata, state = "") {
         const classes = ["airport-marker"];
         if (EASYJET_BASE_IATAS.has(iata)) classes.push("base");
+        if (airportHasFr24Data.get(iata) === false)
+          classes.push("no-fr24-data");
         if (state) classes.push(state);
         return classes.join(" ");
       }
@@ -738,14 +1064,236 @@
       }
 
       function updateSelectedAirportPanel(originAirport, originRoutes) {
+        currentPanelOriginAirport = originAirport;
+        currentPanelOriginRoutes = [...originRoutes];
+
         selectedAirportText.textContent = `${originAirport.name} (${originAirport.iata}) — ${originRoutes.length} destination(s)`;
         destinationsList.innerHTML = "";
 
-        for (const route of originRoutes) {
+        for (const route of getSortedRoutes(originRoutes)) {
           const item = document.createElement("li");
-          item.textContent = `${route.destination.name} (${route.destination.iata})`;
+
+          const main = document.createElement("div");
+          main.className = "destination-main";
+          main.textContent = `${route.destination.name} (${route.destination.iata})`;
+
+          const meta = document.createElement("div");
+          meta.className = "destination-meta";
+          meta.textContent = routeMetaText(route);
+
+          item.appendChild(main);
+          item.appendChild(meta);
           destinationsList.appendChild(item);
         }
+      }
+
+      function getSortedRoutes(originRoutes) {
+        const sortMode = destinationSortSelect.value;
+        const sortedRoutes = [...originRoutes];
+
+        const numberOrMinusInfinity = (value) =>
+          Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
+        const numberOrInfinity = (value) =>
+          Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+
+        switch (sortMode) {
+          case "frequency_desc":
+            sortedRoutes.sort((a, b) => {
+              const diff =
+                numberOrMinusInfinity(b.weekly_frequency) -
+                numberOrMinusInfinity(a.weekly_frequency);
+              if (diff !== 0) return diff;
+              return a.destination.name.localeCompare(b.destination.name);
+            });
+            break;
+
+          case "aircraft":
+            sortedRoutes.sort((a, b) => {
+              const aAircraft = aircraftTypesText(a);
+              const bAircraft = aircraftTypesText(b);
+              const diff = aAircraft.localeCompare(bAircraft);
+              if (diff !== 0) return diff;
+              return a.destination.name.localeCompare(b.destination.name);
+            });
+            break;
+
+          case "distance_asc":
+            sortedRoutes.sort((a, b) => {
+              const diff =
+                numberOrInfinity(a.distance_nm) -
+                numberOrInfinity(b.distance_nm);
+              if (diff !== 0) return diff;
+              return a.destination.name.localeCompare(b.destination.name);
+            });
+            break;
+
+          case "distance_desc":
+            sortedRoutes.sort((a, b) => {
+              const diff =
+                numberOrMinusInfinity(b.distance_nm) -
+                numberOrMinusInfinity(a.distance_nm);
+              if (diff !== 0) return diff;
+              return a.destination.name.localeCompare(b.destination.name);
+            });
+            break;
+
+          case "flight_time_asc":
+            sortedRoutes.sort((a, b) => {
+              const diff =
+                numberOrInfinity(a.estimated_flight_time_minutes) -
+                numberOrInfinity(b.estimated_flight_time_minutes);
+              if (diff !== 0) return diff;
+              return a.destination.name.localeCompare(b.destination.name);
+            });
+            break;
+
+          case "flight_time_desc":
+            sortedRoutes.sort((a, b) => {
+              const diff =
+                numberOrMinusInfinity(b.estimated_flight_time_minutes) -
+                numberOrMinusInfinity(a.estimated_flight_time_minutes);
+              if (diff !== 0) return diff;
+              return a.destination.name.localeCompare(b.destination.name);
+            });
+            break;
+
+          case "block_time_asc":
+            sortedRoutes.sort((a, b) => {
+              const diff =
+                numberOrInfinity(a.estimated_block_time_minutes) -
+                numberOrInfinity(b.estimated_block_time_minutes);
+              if (diff !== 0) return diff;
+              return a.destination.name.localeCompare(b.destination.name);
+            });
+            break;
+
+          case "block_time_desc":
+            sortedRoutes.sort((a, b) => {
+              const diff =
+                numberOrMinusInfinity(b.estimated_block_time_minutes) -
+                numberOrMinusInfinity(a.estimated_block_time_minutes);
+              if (diff !== 0) return diff;
+              return a.destination.name.localeCompare(b.destination.name);
+            });
+            break;
+
+          case "alpha":
+          default:
+            sortedRoutes.sort((a, b) =>
+              a.destination.name.localeCompare(b.destination.name),
+            );
+            break;
+        }
+
+        return sortedRoutes;
+      }
+
+      function routeMetaText(route) {
+        const sortMode = destinationSortSelect.value;
+
+        switch (sortMode) {
+          case "frequency_desc":
+            return Number.isFinite(route.weekly_frequency)
+              ? `${route.weekly_frequency} vol(s)/semaine`
+              : "fréquence inconnue";
+
+          case "distance_asc":
+          case "distance_desc":
+            return Number.isFinite(route.distance_nm)
+              ? `${route.distance_nm} NM`
+              : "distance inconnue";
+
+          case "flight_time_asc":
+          case "flight_time_desc":
+            return Number.isFinite(route.estimated_flight_time_minutes)
+              ? `vol estimé ${formatMinutes(route.estimated_flight_time_minutes)}`
+              : "temps de vol inconnu";
+
+          case "block_time_asc":
+          case "block_time_desc":
+            return Number.isFinite(route.estimated_block_time_minutes)
+              ? `bloc estimé ${formatMinutes(route.estimated_block_time_minutes)}`
+              : "temps bloc inconnu";
+
+          case "aircraft":
+            return aircraftTypesText(route);
+
+          case "alpha":
+          default:
+            return Number.isFinite(route.weekly_frequency)
+              ? `${route.weekly_frequency} vol(s)/semaine`
+              : "fréquence inconnue";
+        }
+      }
+
+      function aircraftTypesText(route) {
+        if (
+          Array.isArray(route.aircraft_types) &&
+          route.aircraft_types.length
+        ) {
+          return route.aircraft_types.join(", ");
+        }
+        return "type avion inconnu";
+      }
+
+      function routeTooltipText(route) {
+        return `${route.origin.iata} → ${route.destination.iata}\n${fullRouteMetaText(route)}`;
+      }
+
+      function fullRouteMetaText(route) {
+        const parts = [];
+
+        if (Number.isFinite(route.weekly_frequency)) {
+          parts.push(`${route.weekly_frequency} vol(s)/semaine`);
+        } else {
+          parts.push("fréquence inconnue");
+        }
+
+        if (Number.isFinite(route.distance_nm)) {
+          parts.push(`${route.distance_nm} NM`);
+        }
+
+        if (Number.isFinite(route.estimated_flight_time_minutes)) {
+          parts.push(
+            `vol estimé ${formatMinutes(route.estimated_flight_time_minutes)}`,
+          );
+        }
+
+        if (Number.isFinite(route.estimated_block_time_minutes)) {
+          parts.push(
+            `bloc estimé ${formatMinutes(route.estimated_block_time_minutes)}`,
+          );
+        }
+
+        if (
+          Array.isArray(route.aircraft_types) &&
+          route.aircraft_types.length
+        ) {
+          parts.push(route.aircraft_types.join(", "));
+        }
+
+        return parts.join(" · ");
+      }
+
+      function formatMinutes(totalMinutes) {
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+
+        if (hours <= 0) return `${minutes} min`;
+        if (minutes === 0) return `${hours}h`;
+        return `${hours}h${String(minutes).padStart(2, "0")}`;
+      }
+
+      function routeLineStyle(route, options = {}) {
+        const { filtered = false } = options;
+        const hasFr24Data = route.has_fr24_data === true;
+
+        return {
+          color: hasFr24Data ? "#ff6900" : "#94a3b8",
+          weight: filtered ? 1.7 : 2,
+          opacity: hasFr24Data ? (filtered ? 0.42 : 0.68) : 0.45,
+          dashArray: hasFr24Data ? null : "5 6",
+        };
       }
 
       function fitMapToSelectedRoutes(originAirport, originRoutes) {

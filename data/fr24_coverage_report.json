@@ -1,0 +1,51 @@
+{
+  "easyjet_source_airports_count": 164,
+  "fr24_selected_airports_count": 164,
+  "fr24_airports_seen_count": 165,
+  "fr24_extra_airports_count": 1,
+  "fr24_extra_airports": [
+    "HAJ"
+  ],
+  "easyjet_airports_without_fr24_data_count": 16,
+  "easyjet_airports_without_fr24_data": [
+    "AEY",
+    "BOH",
+    "CLY",
+    "EVE",
+    "FDH",
+    "GNB",
+    "IST",
+    "KTT",
+    "QSR",
+    "RVN",
+    "SCR",
+    "SPC",
+    "SZG",
+    "TOS",
+    "TRN",
+    "ZAD"
+  ],
+  "all_airports_for_app_count": 165,
+  "malformed_entries_count": 16,
+  "malformed_entries": [
+    "fr24_easyjet_routes_part1.json:AEY -> list",
+    "fr24_easyjet_routes_part1.json:BOH -> list",
+    "fr24_easyjet_routes_part1.json:CLY -> list",
+    "fr24_easyjet_routes_part1.json:EVE -> list",
+    "fr24_easyjet_routes_part1.json:FDH -> list",
+    "fr24_easyjet_routes_part1.json:GNB -> list",
+    "fr24_easyjet_routes_part1.json:IST -> list",
+    "fr24_easyjet_routes_part1.json:KTT -> list",
+    "fr24_easyjet_routes_part2.json:QSR -> list",
+    "fr24_easyjet_routes_part2.json:RVN -> list",
+    "fr24_easyjet_routes_part2.json:SCR -> list",
+    "fr24_easyjet_routes_part2.json:SPC -> list",
+    "fr24_easyjet_routes_part2.json:SZG -> list",
+    "fr24_easyjet_routes_part2.json:TOS -> list",
+    "fr24_easyjet_routes_part2.json:TRN -> list",
+    "fr24_easyjet_routes_part2.json:ZAD -> list"
+  ],
+  "duplicates_count": 0,
+  "duplicates": [],
+  "missing_files": []
+}
