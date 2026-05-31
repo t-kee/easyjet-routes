@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>easyJet Routes Map</title>
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+      }
+
+      #map {
+        height: 100%;
+        width: 100%;
+      }
+
+      /* Critical Leaflet layout CSS.
+         Keep this here because if leaflet.css fails to load, map tiles appear
+         as a broken puzzle of random squares. */
+      .leaflet-container {
+        overflow: hidden;
+        background: #eef2f6;
+        outline-offset: 1px;
+      }
+
+      .leaflet-tile,
+      .leaflet-marker-icon,
+      .leaflet-marker-shadow,
+      .leaflet-tile-container,
+      .leaflet-pane,
+      .leaflet-map-pane,
+      .leaflet-control-container,
+      .leaflet-popup-pane,
+      .leaflet-overlay-pane,
+      .leaflet-shadow-pane,
+      .leaflet-marker-pane,
+      .leaflet-tooltip-pane {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+
+      .leaflet-tile {
+        width: 256px;
+        height: 256px;
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+
+      .leaflet-pane {
+        z-index: 400;
+      }
+
+      .leaflet-tile-pane {
+        z-index: 200;
+      }
+
+      .leaflet-overlay-pane {
+        z-index: 400;
+      }
+
+      .leaflet-shadow-pane {
+        z-index: 500;
+      }
+
+      .leaflet-marker-pane {
+        z-index: 600;
+      }
+
+      .leaflet-tooltip-pane {
+        z-index: 650;
+      }
+
+      .leaflet-popup-pane {
+        z-index: 700;
+      }
+
+      .leaflet-control {
+        position: relative;
+        z-index: 800;
+        pointer-events: auto;
+      }
+
+      .leaflet-top,
+      .leaflet-bottom {
+        position: absolute;
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      .leaflet-top {
+        top: 0;
+      }
+
+      .leaflet-right {
+        right: 0;
+      }
+
+      .leaflet-bottom {
+        bottom: 0;
+      }
+
+      .leaflet-left {
+        left: 0;
+      }
+
+      .info-panel {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        z-index: 1000;
+        width: min(360px, calc(100vw - 32px));
+        max-height: calc(100vh - 32px);
+        overflow: auto;
+        background: rgba(255, 255, 255, 0.94);
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+        padding: 16px;
+        backdrop-filter: blur(10px);
+      }
+
+      .info-panel h1 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+
+      .info-panel p {
+        margin: 6px 0;
+        color: #475569;
+        font-size: 14px;
+        line-height: 1.35;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin: 12px 0;
+      }
+
+      .stat {
+        background: #f1f5f9;
+        border-radius: 12px;
+        padding: 10px;
+      }
+
+      .stat span {
+        display: block;
+        color: #64748b;
+        font-size: 11px;
+      }
+
+      .stat strong {
+        display: block;
+        color: #0f172a;
+        font-size: 20px;
+      }
+
+      #status {
+        font-weight: 700;
+        color: #0f172a;
+      }
+
+      #selectedAirport {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #e2e8f0;
+      }
+
+      #destinationsList {
+        margin: 8px 0 0;
+        padding-left: 18px;
+        font-size: 13px;
+        color: #334155;
+      }
+
+      #destinationsList li {
+        margin: 3px 0;
+      }
+
+      .airport-marker {
+        width: 14px;
+        height: 14px;
+        border-radius: 999px;
+        border: 2px solid white;
+        background: #ff6900;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+      }
+
+      .airport-marker.selected {
+        width: 18px;
+        height: 18px;
+        background: #0f172a;
+      }
+
+      .airport-marker.destination {
+        background: #2563eb;
+      }
+
+      .airport-marker.base {
+        width: 16px;
+        height: 16px;
+        border: 2px solid white;
+        outline: 3px solid #ff6900;
+        outline-offset: 1px;
+        background: #ff6900;
+      }
+
+      .airport-marker.base.selected {
+        width: 18px;
+        height: 18px;
+        outline-color: #0f172a;
+        background: #0f172a;
+      }
+
+      .airport-marker.base.destination {
+        outline-color: #2563eb;
+        background: #2563eb;
+      }
+
+      .airport-marker.dimmed {
+        opacity: 0.22;
+      }
+
+      .legend {
+        display: grid;
+        gap: 6px;
+        margin-top: 10px;
+        font-size: 12px;
+        color: #334155;
+      }
+
+      .legend-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .legend-dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 999px;
+        border: 2px solid white;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+        flex: 0 0 auto;
+      }
+
+      .legend-dot.origin {
+        background: #ff6900;
+      }
+
+      .legend-dot.selected {
+        background: #0f172a;
+      }
+
+      .legend-dot.destination {
+        background: #2563eb;
+      }
+
+      .legend-dot.base {
+        background: #ff6900;
+        outline: 2px solid #ff6900;
+        outline-offset: 1px;
+      }
+
+      .leaflet-popup-content {
+        margin: 10px 12px;
+        font-size: 13px;
+      }
+
+      .error {
+        color: #b91c1c !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="map"></div>
+
+    <aside class="info-panel">
+      <h1>easyJet Routes Map</h1>
+      <p id="status">Chargement des données...</p>
+      <p>
+        Par défaut, aucune route n’est affichée. Clique sur un aéroport orange
+        pour afficher toutes ses destinations easyJet depuis cet aéroport.
+      </p>
+
+      <div class="legend">
+        <div class="legend-row">
+          <span class="legend-dot origin"></span>Origine cliquable dans les
+          données easyJet
+        </div>
+        <div class="legend-row">
+          <span class="legend-dot base"></span>Double contour = base easyJet
+          déclarée dans le code
+        </div>
+        <div class="legend-row">
+          <span class="legend-dot selected"></span>Aéroport sélectionné
+        </div>
+        <div class="legend-row">
+          <span class="legend-dot destination"></span>Destination affichée pour
+          l’aéroport sélectionné
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span>Routes</span><strong id="routeCount">0</strong>
+        </div>
+        <div class="stat">
+          <span>Aéroports</span><strong id="airportCount">0</strong>
+        </div>
+        <div class="stat">
+          <span>Origines</span><strong id="originCount">0</strong>
+        </div>
+      </div>
+
+      <div id="selectedAirport">
+        <p><strong>Aéroport sélectionné</strong></p>
+        <p id="selectedAirportText">Aucun</p>
+        <ol id="destinationsList"></ol>
+      </div>
+    </aside>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+      const EASYJET_SOURCE_FILE = "easyroutes_sources.html";
+      const AIRPORTS_CSV_URL =
+        "https://davidmegginson.github.io/ourairports-data/airports.csv";
+
+      // easyJet operating bases from the English Wikipedia infobox, mapped to IATA.
+      // Seasonal bases are included because they are still useful for network/staff-travel visualization.
+      const EASYJET_BASE_IATAS = new Set([
+        "ALC", // Alicante seasonal
+        "AMS", // Amsterdam
+        "BCN", // Barcelona
+        "BSL", // Basel/Mulhouse
+        "BFS", // Belfast International
+        "BER", // Berlin Brandenburg
+        "BHX", // Birmingham
+        "BOD", // Bordeaux
+        "BRS", // Bristol
+        "EDI", // Edinburgh
+        "FAO", // Faro seasonal
+        "GVA", // Geneva
+        "GLA", // Glasgow
+        "LIS", // Lisbon
+        "LPL", // Liverpool
+        "LGW", // London Gatwick
+        "LTN", // London Luton
+        "SEN", // London Southend
+        "LYS", // Lyon
+        "AGP", // Málaga seasonal
+        "MAN", // Manchester
+        "RAK", // Marrakesh
+        "MXP", // Milan Malpensa
+        "LIN", // Milan Linate
+        "NTE", // Nantes
+        "NAP", // Naples
+        "NCL", // Newcastle upon Tyne
+        "NCE", // Nice
+        "PMI", // Palma de Mallorca seasonal
+        "CDG", // Paris Charles de Gaulle
+        "ORY", // Paris Orly
+        "OPO", // Porto
+        "FCO", // Rome Fiumicino
+      ]);
+
+      const europeBounds = L.latLngBounds([25.0, -31.5], [72.0, 45.0]);
+
+      const map = L.map("map", {
+        preferCanvas: true,
+        worldCopyJump: false,
+        maxBounds: europeBounds.pad(0.25),
+        maxBoundsViscosity: 0.8,
+      }).setView([47.2, 8.5], 5);
+
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        {
+          maxZoom: 12,
+          noWrap: true,
+          bounds: europeBounds.pad(0.35),
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        },
+      ).addTo(map);
+
+      setTimeout(() => map.invalidateSize(), 0);
+      window.addEventListener("resize", () => map.invalidateSize());
+
+      const statusElement = document.querySelector("#status");
+      const routeCountElement = document.querySelector("#routeCount");
+      const airportCountElement = document.querySelector("#airportCount");
+      const originCountElement = document.querySelector("#originCount");
+      const selectedAirportText = document.querySelector(
+        "#selectedAirportText",
+      );
+      const destinationsList = document.querySelector("#destinationsList");
+
+      let routes = [];
+      let airportsByIata = new Map();
+      let routesByOrigin = new Map();
+      let markerByIata = new Map();
+      let activeRouteLayer = L.layerGroup().addTo(map);
+      let activeDestinationLayer = L.layerGroup().addTo(map);
+      let selectedOriginIata = null;
+      let previewOriginIata = null;
+
+      init();
+
+      map.on("click", () => {
+        if (selectedOriginIata) {
+          clearSelectedOrigin();
+        }
+      });
+
+      async function init() {
+        try {
+          setStatus("Chargement du HTML easyJet...");
+          const sourceHtml = await fetchText(EASYJET_SOURCE_FILE);
+
+          setStatus("Extraction des routes easyJet...");
+          routes = extractRoutesFromHtml(sourceHtml);
+
+          setStatus("Chargement des coordonnées des aéroports...");
+          airportsByIata = await loadAirportCoordinates();
+
+          routes = routes.filter(
+            (route) =>
+              airportsByIata.has(route.origin.iata) &&
+              airportsByIata.has(route.destination.iata),
+          );
+
+          routesByOrigin = groupRoutesByOrigin(routes);
+          renderAirportMarkers();
+          updateStats();
+          setStatus("Prêt. Clique sur un aéroport.");
+        } catch (error) {
+          console.error(error);
+          setStatus(
+            "Erreur de chargement. Lance la page avec un petit serveur local, par exemple : python3 -m http.server, puis ouvre http://localhost:8000/\n\n" +
+              error.message,
+            true,
+          );
+        }
+      }
+
+      async function fetchText(url) {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(
+            `Impossible de charger ${url} : HTTP ${response.status}`,
+          );
+        }
+        return response.text();
+      }
+
+      function extractRoutesFromHtml(html) {
+        const routesByKey = new Map();
+
+        // Cas 1 : fichier HTML normal de la page easyJet.
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const links = Array.from(doc.querySelectorAll("a"));
+
+        for (const link of links) {
+          const text = normalizeText(link.textContent);
+          const href = link.getAttribute("href") || "";
+          const route = parseRouteText(text, href);
+
+          if (!route) continue;
+
+          const key = `${route.origin.iata}-${route.destination.iata}`;
+          if (!routesByKey.has(key)) {
+            routesByKey.set(key, route);
+          }
+        }
+
+        // Cas 2 : fichier sauvegardé depuis "Afficher le code source" dans Chrome.
+        // Dans ce cas les vraies balises easyJet sont affichées comme du texte échappé,
+        // entouré de spans du type <span class="html-tag">&lt;strong&gt;</span>.
+        const sourceViewRoutes = extractRoutesFromChromeSourceViewerHtml(html);
+        for (const route of sourceViewRoutes) {
+          const key = `${route.origin.iata}-${route.destination.iata}`;
+          if (!routesByKey.has(key)) {
+            routesByKey.set(key, route);
+          }
+        }
+
+        return Array.from(routesByKey.values()).sort((a, b) =>
+          a.route.localeCompare(b.route),
+        );
+      }
+
+      function extractRoutesFromChromeSourceViewerHtml(html) {
+        const routes = [];
+        const routeRegex =
+          /&lt;strong&gt;<\/span>([^<]+?)<span class="html-tag">&lt;\/strong&gt;<\/span>\s*to\s*<span class="html-tag">&lt;strong&gt;<\/span>([^<]+?)<span class="html-tag">&lt;\/strong&gt;/g;
+        let match;
+
+        while ((match = routeRegex.exec(html)) !== null) {
+          const originText = normalizeText(decodeHtmlEntities(match[1]));
+          const destinationText = normalizeText(decodeHtmlEntities(match[2]));
+          const route = parseRouteText(
+            `${originText} to ${destinationText}`,
+            "",
+          );
+
+          if (route) {
+            routes.push(route);
+          }
+        }
+
+        return routes;
+      }
+
+      function parseRouteText(text, href) {
+        const match = text.match(
+          /^(.+?)\s*\(([A-Z]{3})\)\s+to\s+(.+?)\s*\(([A-Z]{3})\)$/,
+        );
+        if (!match) return null;
+
+        const [, originName, originIata, destinationName, destinationIata] =
+          match;
+
+        return {
+          origin: {
+            name: normalizeText(originName),
+            iata: originIata,
+          },
+          destination: {
+            name: normalizeText(destinationName),
+            iata: destinationIata,
+          },
+          route: `${originIata}-${destinationIata}`,
+          sourceText: text,
+          sourceUrl: absolutizeEasyJetUrl(href),
+        };
+      }
+
+      async function loadAirportCoordinates() {
+        const csvText = await fetchText(AIRPORTS_CSV_URL);
+        const rows = parseCsv(csvText);
+        const header = rows[0];
+        const indexes = Object.fromEntries(
+          header.map((name, index) => [name, index]),
+        );
+        const airportMap = new Map();
+
+        for (const row of rows.slice(1)) {
+          const iata = row[indexes.iata_code];
+          if (!iata) continue;
+
+          const latitude = Number(row[indexes.latitude_deg]);
+          const longitude = Number(row[indexes.longitude_deg]);
+          if (!Number.isFinite(latitude) || !Number.isFinite(longitude))
+            continue;
+
+          airportMap.set(iata, {
+            iata,
+            ident: row[indexes.ident],
+            name: row[indexes.name],
+            municipality: row[indexes.municipality],
+            country: row[indexes.iso_country],
+            latitude,
+            longitude,
+          });
+        }
+
+        return airportMap;
+      }
+
+      function parseCsv(csvText) {
+        const rows = [];
+        let row = [];
+        let value = "";
+        let inQuotes = false;
+
+        for (let i = 0; i < csvText.length; i++) {
+          const char = csvText[i];
+          const nextChar = csvText[i + 1];
+
+          if (char === '"' && inQuotes && nextChar === '"') {
+            value += '"';
+            i++;
+          } else if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === "," && !inQuotes) {
+            row.push(value);
+            value = "";
+          } else if ((char === "\n" || char === "\r") && !inQuotes) {
+            if (char === "\r" && nextChar === "\n") i++;
+            row.push(value);
+            rows.push(row);
+            row = [];
+            value = "";
+          } else {
+            value += char;
+          }
+        }
+
+        if (value || row.length) {
+          row.push(value);
+          rows.push(row);
+        }
+
+        return rows;
+      }
+
+      function groupRoutesByOrigin(routeList) {
+        const grouped = new Map();
+
+        for (const route of routeList) {
+          if (!grouped.has(route.origin.iata)) {
+            grouped.set(route.origin.iata, []);
+          }
+          grouped.get(route.origin.iata).push(route);
+        }
+
+        for (const originRoutes of grouped.values()) {
+          originRoutes.sort((a, b) =>
+            a.destination.name.localeCompare(b.destination.name),
+          );
+        }
+
+        return grouped;
+      }
+
+      function renderAirportMarkers() {
+        const originIatas = Array.from(routesByOrigin.keys());
+
+        for (const iata of originIatas) {
+          const airport = airportsByIata.get(iata);
+          if (!airport) continue;
+
+          const marker = L.marker([airport.latitude, airport.longitude], {
+            icon: createAirportIcon(markerClassForAirport(iata)),
+            title: `${airport.name} (${iata})`,
+          }).addTo(map);
+
+          marker.bindPopup(
+            `<strong>${airport.name}</strong><br>${iata}<br>${routesByOrigin.get(iata).length} destination(s)`,
+          );
+
+          marker.on("click", (event) => {
+            L.DomEvent.stopPropagation(event);
+            selectOrigin(iata);
+          });
+          marker.on("mouseover", () => previewOrigin(iata));
+          marker.on("mouseout", () => restoreSelectedOriginAfterPreview());
+          markerByIata.set(iata, marker);
+        }
+      }
+
+      function selectOrigin(originIata) {
+        if (selectedOriginIata === originIata) {
+          clearSelectedOrigin();
+          return;
+        }
+
+        selectedOriginIata = originIata;
+        previewOriginIata = null;
+        renderOriginRoutes(originIata, { fitMap: true });
+      }
+
+      function previewOrigin(originIata) {
+        if (selectedOriginIata) return;
+        previewOriginIata = originIata;
+        renderOriginRoutes(originIata, { fitMap: false });
+      }
+
+      function restoreSelectedOriginAfterPreview() {
+        if (!previewOriginIata) return;
+        previewOriginIata = null;
+
+        if (!selectedOriginIata) {
+          clearSelectedOrigin();
+        }
+      }
+
+      function renderOriginRoutes(originIata, options = {}) {
+        const { fitMap = false } = options;
+
+        activeRouteLayer.clearLayers();
+        activeDestinationLayer.clearLayers();
+        resetMarkerStyles();
+
+        const originAirport = airportsByIata.get(originIata);
+        const originRoutes = routesByOrigin.get(originIata) || [];
+        const originMarker = markerByIata.get(originIata);
+        if (!originAirport) return;
+
+        if (originMarker) {
+          const state =
+            selectedOriginIata === originIata ? "selected" : "destination";
+          originMarker.setIcon(
+            createAirportIcon(markerClassForAirport(originIata, state)),
+          );
+          if (selectedOriginIata === originIata) {
+            originMarker.openPopup();
+          }
+        }
+
+        const servedIatas = new Set([originIata]);
+        for (const route of originRoutes) {
+          servedIatas.add(route.destination.iata);
+        }
+        dimUnservedMarkers(servedIatas);
+
+        for (const route of originRoutes) {
+          const destinationAirport = airportsByIata.get(route.destination.iata);
+          if (!destinationAirport) continue;
+
+          L.polyline(
+            [
+              [originAirport.latitude, originAirport.longitude],
+              [destinationAirport.latitude, destinationAirport.longitude],
+            ],
+            {
+              color: "#ff6900",
+              weight: 2,
+              opacity: 0.68,
+            },
+          )
+            .bindTooltip(`${route.origin.iata} → ${route.destination.iata}`)
+            .addTo(activeRouteLayer);
+
+          if (markerByIata.has(route.destination.iata)) {
+            markerByIata
+              .get(route.destination.iata)
+              .setIcon(
+                createAirportIcon(
+                  markerClassForAirport(route.destination.iata, "destination"),
+                ),
+              );
+          } else {
+            L.marker(
+              [destinationAirport.latitude, destinationAirport.longitude],
+              {
+                icon: createAirportIcon(
+                  markerClassForAirport(route.destination.iata, "destination"),
+                ),
+                title: `${destinationAirport.name} (${destinationAirport.iata})`,
+              },
+            )
+              .bindPopup(
+                `<strong>${destinationAirport.name}</strong><br>${destinationAirport.iata}`,
+              )
+              .addTo(activeDestinationLayer);
+          }
+        }
+
+        updateSelectedAirportPanel(originAirport, originRoutes);
+        if (fitMap) {
+          fitMapToSelectedRoutes(originAirport, originRoutes);
+        }
+      }
+      function clearSelectedOrigin() {
+        selectedOriginIata = null;
+        previewOriginIata = null;
+        activeRouteLayer.clearLayers();
+        activeDestinationLayer.clearLayers();
+        resetMarkerStyles();
+        selectedAirportText.textContent = "Aucun";
+        destinationsList.innerHTML = "";
+      }
+
+      function resetMarkerStyles() {
+        for (const [iata, marker] of markerByIata.entries()) {
+          marker.setIcon(createAirportIcon(markerClassForAirport(iata)));
+        }
+      }
+
+      function dimUnservedMarkers(servedIatas) {
+        for (const [iata, marker] of markerByIata.entries()) {
+          if (servedIatas.has(iata)) continue;
+          marker.setIcon(
+            createAirportIcon(markerClassForAirport(iata, "dimmed")),
+          );
+        }
+      }
+
+      function markerClassForAirport(iata, state = "") {
+        const classes = ["airport-marker"];
+        if (EASYJET_BASE_IATAS.has(iata)) classes.push("base");
+        if (state) classes.push(state);
+        return classes.join(" ");
+      }
+
+      function createAirportIcon(className) {
+        return L.divIcon({
+          className: "",
+          html: `<div class="${className}"></div>`,
+          iconSize: [18, 18],
+          iconAnchor: [9, 9],
+          popupAnchor: [0, -8],
+        });
+      }
+
+      function updateSelectedAirportPanel(originAirport, originRoutes) {
+        selectedAirportText.textContent = `${originAirport.name} (${originAirport.iata}) — ${originRoutes.length} destination(s)`;
+        destinationsList.innerHTML = "";
+
+        for (const route of originRoutes) {
+          const item = document.createElement("li");
+          item.textContent = `${route.destination.name} (${route.destination.iata})`;
+          destinationsList.appendChild(item);
+        }
+      }
+
+      function fitMapToSelectedRoutes(originAirport, originRoutes) {
+        const points = [[originAirport.latitude, originAirport.longitude]];
+
+        for (const route of originRoutes) {
+          const destinationAirport = airportsByIata.get(route.destination.iata);
+          if (!destinationAirport) continue;
+          points.push([
+            destinationAirport.latitude,
+            destinationAirport.longitude,
+          ]);
+        }
+
+        if (points.length > 1) {
+          map.fitBounds(points, { padding: [60, 60], maxZoom: 7 });
+        } else {
+          map.setView([originAirport.latitude, originAirport.longitude], 7);
+        }
+      }
+
+      function updateStats() {
+        const allAirportIatas = new Set();
+        for (const route of routes) {
+          allAirportIatas.add(route.origin.iata);
+          allAirportIatas.add(route.destination.iata);
+        }
+
+        routeCountElement.textContent = routes.length.toString();
+        airportCountElement.textContent = allAirportIatas.size.toString();
+        originCountElement.textContent = routesByOrigin.size.toString();
+      }
+
+      function decodeHtmlEntities(value) {
+        const textarea = document.createElement("textarea");
+        textarea.innerHTML = value;
+        return textarea.value;
+      }
+
+      function normalizeText(value) {
+        return value
+          .replace(/\s+/g, " ")
+          .replace(/\u00a0/g, " ")
+          .trim();
+      }
+
+      function absolutizeEasyJetUrl(href) {
+        if (!href) return null;
+        try {
+          return new URL(href, "https://www.easyjet.com").toString();
+        } catch {
+          return href;
+        }
+      }
+
+      function setStatus(message, isError = false) {
+        statusElement.textContent = message;
+        statusElement.classList.toggle("error", isError);
+      }
+    </script>
+  </body>
+</html>
