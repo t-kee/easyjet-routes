@@ -339,7 +339,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
-      const EASYJET_SOURCE_FILE = "easyroutes_sources.html";
+      const ROUTES_JSON_FILE = "data/easyjet_routes_enriched.json";
       const AIRPORTS_CSV_URL =
         "https://davidmegginson.github.io/ourairports-data/airports.csv";
 
@@ -432,11 +432,8 @@
 
       async function init() {
         try {
-          setStatus("Chargement du HTML easyJet...");
-          const sourceHtml = await fetchText(EASYJET_SOURCE_FILE);
-
-          setStatus("Extraction des routes easyJet...");
-          routes = extractRoutesFromHtml(sourceHtml);
+          setStatus("Chargement des routes easyJet...");
+          routes = await fetchJson(ROUTES_JSON_FILE);
 
           setStatus("Chargement des coordonnées des aéroports...");
           airportsByIata = await loadAirportCoordinates();
@@ -471,86 +468,14 @@
         return response.text();
       }
 
-      function extractRoutesFromHtml(html) {
-        const routesByKey = new Map();
-
-        // Cas 1 : fichier HTML normal de la page easyJet.
-        const doc = new DOMParser().parseFromString(html, "text/html");
-        const links = Array.from(doc.querySelectorAll("a"));
-
-        for (const link of links) {
-          const text = normalizeText(link.textContent);
-          const href = link.getAttribute("href") || "";
-          const route = parseRouteText(text, href);
-
-          if (!route) continue;
-
-          const key = `${route.origin.iata}-${route.destination.iata}`;
-          if (!routesByKey.has(key)) {
-            routesByKey.set(key, route);
-          }
-        }
-
-        // Cas 2 : fichier sauvegardé depuis "Afficher le code source" dans Chrome.
-        // Dans ce cas les vraies balises easyJet sont affichées comme du texte échappé,
-        // entouré de spans du type <span class="html-tag">&lt;strong&gt;</span>.
-        const sourceViewRoutes = extractRoutesFromChromeSourceViewerHtml(html);
-        for (const route of sourceViewRoutes) {
-          const key = `${route.origin.iata}-${route.destination.iata}`;
-          if (!routesByKey.has(key)) {
-            routesByKey.set(key, route);
-          }
-        }
-
-        return Array.from(routesByKey.values()).sort((a, b) =>
-          a.route.localeCompare(b.route),
-        );
-      }
-
-      function extractRoutesFromChromeSourceViewerHtml(html) {
-        const routes = [];
-        const routeRegex =
-          /&lt;strong&gt;<\/span>([^<]+?)<span class="html-tag">&lt;\/strong&gt;<\/span>\s*to\s*<span class="html-tag">&lt;strong&gt;<\/span>([^<]+?)<span class="html-tag">&lt;\/strong&gt;/g;
-        let match;
-
-        while ((match = routeRegex.exec(html)) !== null) {
-          const originText = normalizeText(decodeHtmlEntities(match[1]));
-          const destinationText = normalizeText(decodeHtmlEntities(match[2]));
-          const route = parseRouteText(
-            `${originText} to ${destinationText}`,
-            "",
+      async function fetchJson(url) {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(
+            `Impossible de charger ${url} : HTTP ${response.status}`,
           );
-
-          if (route) {
-            routes.push(route);
-          }
         }
-
-        return routes;
-      }
-
-      function parseRouteText(text, href) {
-        const match = text.match(
-          /^(.+?)\s*\(([A-Z]{3})\)\s+to\s+(.+?)\s*\(([A-Z]{3})\)$/,
-        );
-        if (!match) return null;
-
-        const [, originName, originIata, destinationName, destinationIata] =
-          match;
-
-        return {
-          origin: {
-            name: normalizeText(originName),
-            iata: originIata,
-          },
-          destination: {
-            name: normalizeText(destinationName),
-            iata: destinationIata,
-          },
-          route: `${originIata}-${destinationIata}`,
-          sourceText: text,
-          sourceUrl: absolutizeEasyJetUrl(href),
-        };
+        return response.json();
       }
 
       async function loadAirportCoordinates() {
@@ -852,28 +777,6 @@
         routeCountElement.textContent = routes.length.toString();
         airportCountElement.textContent = allAirportIatas.size.toString();
         originCountElement.textContent = routesByOrigin.size.toString();
-      }
-
-      function decodeHtmlEntities(value) {
-        const textarea = document.createElement("textarea");
-        textarea.innerHTML = value;
-        return textarea.value;
-      }
-
-      function normalizeText(value) {
-        return value
-          .replace(/\s+/g, " ")
-          .replace(/\u00a0/g, " ")
-          .trim();
-      }
-
-      function absolutizeEasyJetUrl(href) {
-        if (!href) return null;
-        try {
-          return new URL(href, "https://www.easyjet.com").toString();
-        } catch {
-          return href;
-        }
       }
 
       function setStatus(message, isError = false) {
