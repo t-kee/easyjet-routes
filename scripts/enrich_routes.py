@@ -110,6 +110,8 @@ def main() -> None:
             {
                 **route,
                 "weekly_frequency": fr24_route_data.get(route["route"], {}).get("weekly_frequency"),
+                "weekly_frequency_total_observed": fr24_route_data.get(route["route"], {}).get("weekly_frequency_total_observed"),
+                "weekly_frequency_capture_count": fr24_route_data.get(route["route"], {}).get("weekly_frequency_capture_count"),
                 "weekly_frequency_source": fr24_route_data.get(route["route"], {}).get("weekly_frequency_source"),
                 "aircraft_types": fr24_route_data.get(route["route"], {}).get("aircraft_types", []),
                 "fr24_flight_numbers": fr24_route_data.get(route["route"], {}).get("flight_numbers", []),
@@ -216,6 +218,10 @@ def load_fr24_route_data() -> tuple[dict[str, dict], set[str], set[str]]:
     data = json.loads(FR24_MERGED.read_text(encoding="utf-8"))
     selected_airports = data.get("airports", {}) if isinstance(data, dict) else {}
     coverage = data.get("coverage", {}) if isinstance(data, dict) else {}
+    metadata = data.get("metadata", {}) if isinstance(data, dict) else {}
+    capture_count = metadata.get("capture_count", 1) if isinstance(metadata, dict) else 1
+    if not isinstance(capture_count, (int, float)) or capture_count <= 0:
+        capture_count = 1
 
     route_data: dict[str, dict] = {}
 
@@ -245,6 +251,13 @@ def load_fr24_route_data() -> tuple[dict[str, dict], set[str], set[str]]:
     )
 
     for value in route_data.values():
+        total_frequency = value["weekly_frequency"]
+        value["weekly_frequency_total_observed"] = total_frequency
+        value["weekly_frequency_capture_count"] = capture_count
+        value["weekly_frequency"] = round(total_frequency / capture_count, 1)
+        value["weekly_frequency_source"] = (
+            f"FR24 next 7 days manual browser collection, averaged over {capture_count} capture(s)"
+        )
         value["aircraft_types"] = sorted(value["aircraft_types"])
         value["flight_numbers"] = sorted(value["flight_numbers"])
 
@@ -328,6 +341,7 @@ def normalize_aircraft_type(value: object) -> str | None:
         return None
 
     return AIRCRAFT_TYPE_MAP.get(raw)
+
 
 def load_airports() -> dict[str, Airport]:
     with urlopen(AIRPORTS_CSV_URL, timeout=30) as response:

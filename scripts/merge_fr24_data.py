@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -12,10 +10,7 @@ FR24_DIR = DATA_DIR / "fr24_raw"
 
 ROUTES_JSON = DATA_DIR / "easyjet_routes_enriched.json"
 
-PART_FILES = [
-    FR24_DIR / "fr24_easyjet_routes_part1.json",
-    FR24_DIR / "fr24_easyjet_routes_part2.json",
-]
+PART_FILES = sorted(FR24_DIR.glob("fr24_easyjet_routes_*.json"))
 
 OUTPUT_FILE = DATA_DIR / "fr24_merged.json"
 COVERAGE_REPORT_FILE = DATA_DIR / "fr24_coverage_report.json"
@@ -105,6 +100,55 @@ def has_fr24_flight_data(value: Any) -> bool:
     )
 
 
+def extract_capture_dates_from_filename(filename: str) -> list[str]:
+    # Expected pattern: fr24_easyjet_routes_2026-06-07_part1.json
+    parts = filename.split("_")
+    return [
+        part
+        for part in parts
+        if len(part) == 10 and part[4] == "-" and part[7] == "-"
+    ]
+
+
+def merge_airports_payload(
+    target_airports: dict[str, Any],
+    source_airports: dict[str, Any],
+) -> None:
+    for airport_iata, source_airport in source_airports.items():
+        if airport_iata not in target_airports:
+            target_airports[airport_iata] = source_airport
+            continue
+
+        target_airport = target_airports[airport_iata]
+
+        if not isinstance(target_airport, dict) or not isinstance(source_airport, dict):
+            target_airports[airport_iata] = source_airport
+            continue
+
+        target_flights = target_airport.setdefault("flights", {})
+        source_flights = source_airport.get("flights", {})
+
+        if not isinstance(target_flights, dict) or not isinstance(source_flights, dict):
+            continue
+
+        for flight_number, source_flight in source_flights.items():
+            if flight_number not in target_flights:
+                target_flights[flight_number] = source_flight
+                continue
+
+            target_flight = target_flights[flight_number]
+
+            if not isinstance(target_flight, dict) or not isinstance(source_flight, dict):
+                target_flights[flight_number] = source_flight
+                continue
+
+            target_utc = target_flight.setdefault("utc", {})
+            source_utc = source_flight.get("utc", {})
+
+            if isinstance(target_utc, dict) and isinstance(source_utc, dict):
+                target_utc.update(source_utc)
+
+
 def main() -> None:
     easyjet_source_airports = collect_easyjet_source_airports()
 
@@ -139,8 +183,45 @@ def main() -> None:
                 malformed_entries.append(
                     f"{file.name}:{airport_iata} -> {type(airport_data).__name__}"
                 )
+                continue
 
-            merged[airport_iata] = airport_data
+            existing = merged.get(airport_iata)
+
+            if not isinstance(existing, dict):
+                merged[airport_iata] = airport_data
+                continue
+
+            for direction in ("arrivals", "departures"):
+                source_direction = airport_data.get(direction, {})
+                target_direction = existing.setdefault(direction, {})
+
+                if not isinstance(source_direction, dict):
+                    continue
+
+                for country_name, country_data in source_direction.items():
+                    if country_name not in target_direction:
+                        target_direction[country_name] = country_data
+                        continue
+
+                    target_country = target_direction[country_name]
+
+                    if not isinstance(target_country, dict) or not isinstance(country_data, dict):
+                        continue
+
+                    target_airports = target_country.setdefault("airports", {})
+                    source_airports = country_data.get("airports", {})
+
+                    if isinstance(target_airports, dict) and isinstance(source_airports, dict):
+                        merge_airports_payload(target_airports, source_airports)
+
+    capture_dates = sorted(
+        {
+            capture_date
+            for file in PART_FILES
+            for capture_date in extract_capture_dates_from_filename(file.name)
+        }
+    )
+    capture_count = len(capture_dates) or len(PART_FILES) or 1
 
     fr24_airports_seen = collect_fr24_airports_seen_in_payload(merged)
     fr24_extra_airports = sorted(fr24_airports_seen - easyjet_source_airports)
@@ -154,6 +235,12 @@ def main() -> None:
     all_airports_for_app = sorted(easyjet_source_airports | set(fr24_extra_airports))
 
     output = {
+        "metadata": {
+            "source_files": [file.name for file in PART_FILES],
+            "capture_dates": capture_dates,
+            "capture_count": capture_count,
+            "frequency_basis": "FR24 next-7-days browser collections merged across capture dates",
+        },
         "airports": merged,
         "coverage": {
             "easyjet_source_airports": sorted(easyjet_source_airports),
@@ -166,6 +253,9 @@ def main() -> None:
 
     coverage_report = {
         "easyjet_source_airports_count": len(easyjet_source_airports),
+        "source_files": [file.name for file in PART_FILES],
+        "capture_dates": capture_dates,
+        "capture_count": capture_count,
         "fr24_selected_airports_count": len(merged),
         "fr24_airports_seen_count": len(fr24_airports_seen),
         "fr24_extra_airports_count": len(fr24_extra_airports),
@@ -210,7 +300,7 @@ def main() -> None:
 
     if duplicates:
         print()
-        print(f"Duplicate airport keys overwritten: {len(set(duplicates))}")
+        print(f"Duplicate airport keys merged: {len(set(duplicates))}")
         print(sorted(set(duplicates)))
 
     if missing_files:
